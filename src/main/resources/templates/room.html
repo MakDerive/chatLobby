@@ -55,11 +55,10 @@
         var username = null;
 
         function connect() {
-            // Запрашиваем имя пользователя
             while (!username || username.trim() === '') {
                 username = prompt('Enter your name:');
                 if (username === null) {
-                    window.location.href = '/'; // Если пользователь отменил, возвращаем на главную
+                    window.location.href = '/';
                     return;
                 }
                 username = username.trim();
@@ -70,12 +69,10 @@
             stompClient.connect({}, function (frame) {
                 console.log('Connected: ' + frame);
                 
-                // Подписываемся на получение сообщений в этой комнате
                 stompClient.subscribe('/topic/room/' + roomId, function (message) {
                     showMessage(JSON.parse(message.body));
                 });
                 
-                // Уведомляем о входе пользователя
                 sendSystemMessage(username + ' joined the room');
             });
         }
