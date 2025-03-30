@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Room <span th:text="${room.id}"></span></title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs/lib/stomp.min.js"></script>
+    <style>
+        #chat-container {
+            width: 500px;
+            margin: 0 auto;
+        }
+        #message-area {
+            height: 300px;
+            border: 1px solid #ccc;
+            overflow-y: scroll;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        #message-form {
+            display: flex;
+        }
+        #message-input {
+            flex-grow: 1;
+            padding: 8px;
+        }
+        #send-button {
+            padding: 8px 15px;
+            margin-left: 10px;
+        }
+        .user-message {
+            margin: 5px 0;
+        }
+        .system-message {
+            color: gray;
+            font-style: italic;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <h1>Room: <span th:text="${room.id}"></span></h1>
+        
+        <div id="message-area"></div>
+        
+        <form id="message-form">
+            <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off"/>
+            <button type="submit" id="send-button">Send</button>
+        </form>
+    </div>
+
+    <script>
+        var stompClient = null;
+        var roomId = '[[${room.id}]]';
+        var username = null;
+
+        function connect() {
+            // Запрашиваем имя пользователя
+            while (!username || username.trim() === '') {
+                username = prompt('Enter your name:');
+                if (username === null) {
+                    window.location.href = '/'; // Если пользователь отменил, возвращаем на главную
+                    return;
+                }
+                username = username.trim();
+            }
+
+            var socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+            stompClient.connect({}, function (frame) {
+                console.log('Connected: ' + frame);
+                
+                // Подписываемся на получение сообщений в этой комнате
+                stompClient.subscribe('/topic/room/' + roomId, function (message) {
+                    showMessage(JSON.parse(message.body));
+                });
+                
+                // Уведомляем о входе пользователя
+                sendSystemMessage(username + ' joined the room');
+            });
+        }
+
+        function sendMessage() {
+            var messageInput = document.getElementById('message-input');
+            var messageContent = messageInput.value.trim();
+            
+            if (messageContent && stompClient) {
+                var message = {
+                    sender: username,
+                    content: messageContent,
+                    timestamp: new Date().toISOString(),
+                    type: 'CHAT'
+                };
+                
+                stompClient.send("/app/chat/" + roomId, {}, JSON.stringify(message));
+                messageInput.value = '';
+            }
+        }
+
+        function sendSystemMessage(content) {
+            if (stompClient) {
+                var message = {
+                    sender: 'System',
+                    content: content,
+                    timestamp: new Date().toISOString(),
+                    type: 'SYSTEM'
+                };
+                stompClient.send("/app/chat/" + roomId, {}, JSON.stringify(message));
+            }
+        }
+
+        function showMessage(message) {
+            var messageArea = document.getElementById('message-area');
+            var messageElement = document.createElement('div');
+            
+            if (message.type === 'SYSTEM') {
+                messageElement.className = 'system-message';
+                messageElement.textContent = message.content;
+            } else {
+                messageElement.className = 'user-message';
+                messageElement.innerHTML = '<strong>' + message.sender + ':</strong> ' + message.content;
+            }
+            
+            messageArea.appendChild(messageElement);
+            messageArea.scrollTop = messageArea.scrollHeight;
+        }
+
+        window.onload = function() {
+            connect();
+            
+            document.getElementById('message-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                sendMessage();
+            });
+        };
+
+        window.onbeforeunload = function() {
+            if (stompClient && username) {
+                sendSystemMessage(username + ' left the room');
+                stompClient.disconnect();
+            }
+        };
+    </script>
+</body>
+</html>
