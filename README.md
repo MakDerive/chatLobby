@@ -3,4 +3,4 @@
 Использованные библиотеки: Spring Web, lombok, Thymeleaf, WebSocket
 
 Пример работы программы
-![Чат лобби](https://github.com/user-attachments/assets/0a2f3142-16f1-48a5-a8b8-2a9cc6dfc451)
+![Чат лобби](https://github.com/user-attachments/assets/99d7074e-dbd2-4f2f-93f4-d88d8a3e9129)
